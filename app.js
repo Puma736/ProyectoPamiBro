@@ -10,27 +10,27 @@ const CONFIG = {
     bgFlowerCountMobile: 80,
     heartParticleCount: 3000, // Más puntos para que el corazón se vea más gordito
     heartParticleCountMobile: 1500,
-    galaxyParticleCount: 40000, 
+    galaxyParticleCount: 40000,
     galaxyParticleCountMobile: 15000,
     starCount: 8000, // Miles de estrellas extra
     starCountMobile: 3000
 };
 
 const MESSAGES = [
-    { title: "Para mi gran amiga Laura 💛", text: "Quería dejarte estas palabras, Laura, para recordarte lo mucho que valoro nuestra amistad." },
-    { title: "Eres genial Estefany 🌼", text: "Tu energía y tu forma de ser iluminan cualquier lugar. ¡Nunca cambies!" },
-    { title: "Gracias por estar ahí 🌻", text: "Gracias por escucharme siempre, Laura, y ser un apoyo incondicional en todo momento." },
-    { title: "Grandes amigos ✨", text: "Hay personas que llegan a tu vida y la mejoran por completo. Tú eres una de ellas, Estefany." },
-    { title: "Momentos únicos 🌷", text: "Espero que sigamos coleccionando aventuras y risas juntos por mucho tiempo más, Laura Estefany." },
-    { title: "Qué suerte la mía 🍀", text: "Tener una amiga como tú es de las mejores cosas que me han pasado." },
-    { title: "Eres incondicional 🌸", text: "En las buenas y en las malas, sé que siempre puedo contar con tu amistad, Laura." },
-    { title: "La mejor amiga 🌻", text: "Cada día agradezco poder compartir tantas locuras y buenos momentos contigo, Estefany." }
+    { title: "Un detalle para ti 🌻", text: "Quería regalarte este pequeño detalle de flores amarillas, Juany, para sacarte una sonrisa y desearte un día genial." },
+    { title: "Buena vibra ✨", text: "Tu alegría y tu forma de ser siempre transmiten buena energía. ¡Que nunca se apague esa chispa!" },
+    { title: "Gran amistad 🌼", text: "Aprecio mucho compartir buenos momentos, risas y anécdotas contigo, Juany. ¡Gracias por tu linda amistad!" },
+    { title: "Muchos éxitos 🍀", text: "Te deseo siempre lo mejor en cada meta que te propongas. Que sigan viniendo cosas muy buenas para ti." },
+    { title: "Sonrisas y alegría 🌷", text: "Que hoy y siempre tengas mil motivos para sonreír y pasarla bien. ¡Un abrazo con mucho cariño!" },
+    { title: "Siempre genial 🌸", text: "Es muy lindo contar con amigas tan sinceras, auténticas y divertidas. Gracias por ser siempre tú misma, Juany." },
+    { title: "Flores amarillas ☀️", text: "Dicen que las flores amarillas llenan el día de luz y optimismo... así que aquí tienes un jardín entero para ti." },
+    { title: "Con mucho aprecio 🌻", text: "Para una gran amiga: gracias por la confianza, las risas y la buena compañía de siempre. ¡Que tengas un día increíble!" }
 ];
 
 const FLOATING_TEXTS = [
-    "Mejor amiga 💛🌻", "Vales oro 🌻", "Grandes amigos 🌻", "Eres única 🌻",
-    "BFF 💛", "Eres genial 🌻", "Siempre juntos 💛", "Gran amiga 🌻",
-    "Increíble 🌻", "Incondicional 🌻", "Te aprecio 💛", "Para ti amiga 🌻"
+    "Para Juany 🌻", "Buena vibra ✨", "Gran amiga 🌻", "Eres genial 🌻",
+    "Sonríe siempre 💛", "Con cariño 🌻", "Mucha luz ☀️", "Un detalle especial 🌻",
+    "Alegría ✨", "Se te aprecia 💛", "Muchos éxitos 🍀", "Para ti 🌻"
 ];
 
 const FLOWER_IMAGES = [
@@ -45,10 +45,10 @@ let mouseTarget = { x: 0, y: 0 };
 let isZoomingIn = false;
 let isZoomingOut = false;
 let cameraTargetPos = new THREE.Vector3(0, 15, 50);
-let cameraTargetPosOut = new THREE.Vector3(0, 20, 70); // Destino final más alejado
+let cameraTargetPosOut = new THREE.Vector3(0, 26, 100); // Destino final más alejado
 
 let flowers = [], flowerMeshes = [];
-let heartParticles, heartBasePositions = [];
+let solitaryRoseGroup, solitaryRoseMesh, solitaryTextSprite, solitaryParticles;
 let galaxyParticles, galaxyData = [];
 let starParticles;
 let floatingTextElements = [];
@@ -108,10 +108,10 @@ function startExperience() {
                 document.getElementById('canvas-wrap').classList.add('show');
                 document.getElementById('btn-music').classList.add('show');
             }, 400);
-            
+
             // Arrancar el motor de zoom más rápido
             setTimeout(() => {
-                isZoomingIn = true; 
+                isZoomingIn = true;
             }, 800);
         });
     } catch (e) {
@@ -213,7 +213,7 @@ function initThreeJS() {
     controls.dampingFactor = 0.05;
     controls.minDistance = 10;
     controls.maxDistance = 1000;
-    controls.target.set(0, 5, 0); // Mirar hacia el centro (donde está el corazón)
+    controls.target.set(0, 9.5, 0); // Mirar hacia el centro (donde está la rosa solitaria)
     controls.enabled = false; // Bloquear controles de usuario hasta que termine la intro
 
     raycaster = new THREE.Raycaster();
@@ -222,7 +222,7 @@ function initThreeJS() {
     createLightsAndAurora();
     createStars();
     createGalaxy();
-    createHeart();
+    createSolitaryRose();
     createBackgroundFlowers(); // Añadido
     createFlowers();
 
@@ -286,13 +286,13 @@ function createStars() {
 
     for (let i = 0; i < count; i++) {
         // Distribuir en una esfera gigante alrededor del escenario (no adentró de la galaxia)
-        let r = 40 + Math.random() * 160; 
+        let r = 40 + Math.random() * 160;
         let theta = 2 * Math.PI * Math.random();
         let phi = Math.acos(2 * Math.random() - 1);
 
-        pos[i*3] = r * Math.sin(phi) * Math.cos(theta);
-        pos[i*3+1] = r * Math.cos(phi);
-        pos[i*3+2] = r * Math.sin(phi) * Math.sin(theta);
+        pos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+        pos[i * 3 + 1] = r * Math.cos(phi);
+        pos[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
 
         // Mezcla perfecta de amarillo y blanco
         let color = new THREE.Color();
@@ -301,7 +301,7 @@ function createStars() {
         } else {
             color.lerpColors(new THREE.Color(0xFFD700), new THREE.Color(0xFFFFFF), Math.random() * 0.5); // Amarillos claros
         }
-        colors[i*3] = color.r; colors[i*3+1] = color.g; colors[i*3+2] = color.b;
+        colors[i * 3] = color.r; colors[i * 3 + 1] = color.g; colors[i * 3 + 2] = color.b;
     }
 
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
@@ -318,16 +318,16 @@ function createStars() {
     ctx.beginPath(); ctx.arc(8, 8, 8, 0, Math.PI * 2); ctx.fill();
     let tex = new THREE.CanvasTexture(canvas);
 
-    let mat = new THREE.PointsMaterial({ 
-        size: 0.6 + Math.random() * 0.4, 
-        vertexColors: true, 
-        transparent: true, 
+    let mat = new THREE.PointsMaterial({
+        size: 0.6 + Math.random() * 0.4,
+        vertexColors: true,
+        transparent: true,
         opacity: 0.8,
         map: tex,
         depthWrite: false,
         blending: THREE.AdditiveBlending
     });
-    
+
     starParticles = new THREE.Points(geo, mat);
     scene.add(starParticles);
 }
@@ -337,26 +337,26 @@ function createGalaxy() {
     let geo = new THREE.BufferGeometry();
     let pos = new Float32Array(count * 3);
     let colors = new Float32Array(count * 3);
-    
+
     let colorCenter = new THREE.Color(0xFFFFFF); // Blanco puro
     let colorMid = new THREE.Color(0xFFD700);    // Dorado brillante
     let colorEdge = new THREE.Color(0xD9A441);   // Dorado oscuro
-    
+
     // 1. VÓRTICE HECHO DE PARTÍCULAS (5 brazos espirales)
-    for(let i=0; i<count; i++) {
+    for (let i = 0; i < count; i++) {
         // Añadimos un radio mínimo de 2.0 para evitar que miles de partículas se amontonen en el punto 0,0 y quemen el centro
-        let r = 2.0 + Math.pow(Math.random(), 1.8) * 33; 
-        
-        let isArm = Math.random() < 0.8; 
-        
-        let branchAngle = (i % 5) * ((Math.PI * 2) / 5); 
-        let spinAngle = r * 0.16; 
-        
+        let r = 2.0 + Math.pow(Math.random(), 1.8) * 33;
+
+        let isArm = Math.random() < 0.8;
+
+        let branchAngle = (i % 5) * ((Math.PI * 2) / 5);
+        let spinAngle = r * 0.16;
+
         let rx, rz, randX = 0, randZ = 0;
         if (isArm) {
             // Brazos AÚN más anchos en el centro (8.5) 
-            let scatter = Math.max(0.5, 8.5 - (r / 5.0)); 
-            
+            let scatter = Math.max(0.5, 8.5 - (r / 5.0));
+
             randX = (Math.random() - 0.5) * scatter;
             randZ = (Math.random() - 0.5) * scatter;
             // Randomness contenido estrictamente en el grosor del brazo
@@ -367,41 +367,41 @@ function createGalaxy() {
             let angle = Math.random() * Math.PI * 2;
             rx = Math.cos(angle) * r;
             rz = Math.sin(angle) * r;
-            
+
             // Calculamos el randX/Z artificial para que no falle
             randX = rx - Math.cos(angle) * r;
             randZ = rz - Math.sin(angle) * r;
             branchAngle = angle;
             spinAngle = 0;
         }
-        
-        // Muy plano en Y, formando el disco
-        let ry = (Math.random() - 0.5) * Math.max(0.1, 1.0 - r * 0.03); 
 
-        pos[i*3] = rx;
-        pos[i*3+1] = ry; 
-        pos[i*3+2] = rz;
-        
-        let actualDist = Math.sqrt(rx*rx + ry*ry + rz*rz);
+        // Muy plano en Y, formando el disco
+        let ry = (Math.random() - 0.5) * Math.max(0.1, 1.0 - r * 0.03);
+
+        pos[i * 3] = rx;
+        pos[i * 3 + 1] = ry;
+        pos[i * 3 + 2] = rz;
+
+        let actualDist = Math.sqrt(rx * rx + ry * ry + rz * rz);
         let mixedColor = new THREE.Color();
-        
+
         // Muchísimos más puntos blancos concentrados específicamente en las líneas (brazos) de la galaxia
-        let whiteChance = isArm ? 0.50 : 0.20; 
+        let whiteChance = isArm ? 0.50 : 0.20;
         if (Math.random() < whiteChance) {
             mixedColor.setHex(0xFFFFFF); // Blanco absoluto
         } else {
             if (actualDist < 5.0) {
                 // Hacemos el centro un dorado mucho más profundo para contrarrestar la suma de luces
-                mixedColor.lerpColors(new THREE.Color(0xB8860B), colorMid, 0.5); 
+                mixedColor.lerpColors(new THREE.Color(0xB8860B), colorMid, 0.5);
             } else if (actualDist < 15) {
                 mixedColor.lerpColors(colorMid, colorEdge, (actualDist - 5.0) / 10.0);
             } else {
-                mixedColor.lerpColors(colorMid, colorEdge, 1.0); 
+                mixedColor.lerpColors(colorMid, colorEdge, 1.0);
             }
         }
-        
-        colors[i*3] = mixedColor.r; colors[i*3+1] = mixedColor.g; colors[i*3+2] = mixedColor.b;
-        
+
+        colors[i * 3] = mixedColor.r; colors[i * 3 + 1] = mixedColor.g; colors[i * 3 + 2] = mixedColor.b;
+
         galaxyData.push({
             angle: branchAngle + spinAngle,
             radius: r,
@@ -411,19 +411,19 @@ function createGalaxy() {
             ry: ry
         });
     }
-    
+
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    
+
     let canvasParticle = document.createElement('canvas');
     canvasParticle.width = 16; canvasParticle.height = 16;
     let ctxP = canvasParticle.getContext('2d');
-    let gradP = ctxP.createRadialGradient(8,8,0,8,8,8);
+    let gradP = ctxP.createRadialGradient(8, 8, 0, 8, 8, 8);
     // Usar blanco puro para la textura, el color dorado lo dará el vertexColor
     gradP.addColorStop(0, 'rgba(255,255,255,1)');
     gradP.addColorStop(0.2, 'rgba(255,255,255,0.8)');
     gradP.addColorStop(1, 'rgba(0,0,0,0)');
-    ctxP.fillStyle = gradP; ctxP.fillRect(0,0,16,16);
+    ctxP.fillStyle = gradP; ctxP.fillRect(0, 0, 16, 16);
     let texP = new THREE.CanvasTexture(canvasParticle);
 
     let matParticle = new THREE.PointsMaterial({
@@ -431,144 +431,177 @@ function createGalaxy() {
         vertexColors: true, blending: THREE.AdditiveBlending,
         transparent: true, depthWrite: false, map: texP
     });
-    
+
     galaxyParticles = new THREE.Points(geo, matParticle);
     scene.add(galaxyParticles);
 
     // --- AURORAS AMARILLAS EN LA GALAXIA ---
     let auroraCanvas = document.createElement('canvas');
-    auroraCanvas.width = 512; auroraCanvas.height = 512; 
+    auroraCanvas.width = 512; auroraCanvas.height = 512;
     let auroraCtx = auroraCanvas.getContext('2d');
-    let auroraGrad = auroraCtx.createRadialGradient(256,256,0, 256,256,256);
+    let auroraGrad = auroraCtx.createRadialGradient(256, 256, 0, 256, 256, 256);
     auroraGrad.addColorStop(0, 'rgba(255, 215, 0, 0.4)'); // Aurora amarilla tenue
-    auroraGrad.addColorStop(0.5, 'rgba(255, 215, 0, 0.1)'); 
+    auroraGrad.addColorStop(0.5, 'rgba(255, 215, 0, 0.1)');
     auroraGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    auroraCtx.fillStyle = auroraGrad; auroraCtx.fillRect(0,0,512,512);
-    
+    auroraCtx.fillStyle = auroraGrad; auroraCtx.fillRect(0, 0, 512, 512);
+
     let auroraTex = new THREE.CanvasTexture(auroraCanvas);
-    let auroraMat = new THREE.MeshBasicMaterial({ 
-        map: auroraTex, transparent: true, blending: THREE.AdditiveBlending, 
-        depthWrite: false, side: THREE.DoubleSide 
+    let auroraMat = new THREE.MeshBasicMaterial({
+        map: auroraTex, transparent: true, blending: THREE.AdditiveBlending,
+        depthWrite: false, side: THREE.DoubleSide
     });
-    
+
     // Distribuir 4 auroras masivas por la galaxia
-    for(let a=0; a<4; a++) {
+    for (let a = 0; a < 4; a++) {
         let auroraMesh = new THREE.Mesh(new THREE.PlaneGeometry(50, 50), auroraMat);
         auroraMesh.rotation.x = -Math.PI / 2;
-        let angle = (a / 4) * Math.PI * 2 + Math.PI/4;
+        let angle = (a / 4) * Math.PI * 2 + Math.PI / 4;
         let dist = 15;
-        auroraMesh.position.set(Math.cos(angle)*dist, -1, Math.sin(angle)*dist);
+        auroraMesh.position.set(Math.cos(angle) * dist, -1, Math.sin(angle) * dist);
         scene.add(auroraMesh);
     }
 
     // Eliminado completamente el coreMesh base para quitar ese exceso de brillo blanco estático en el fondo
 }
 
-function createHeart() {
-    let count = isMobile ? CONFIG.heartParticleCountMobile : CONFIG.heartParticleCount;
-    let geo = new THREE.BufferGeometry();
-    let pos = new Float32Array(count * 3);
+function createSolitaryRose() {
+    let group = new THREE.Group();
+    group.position.set(0, 9.5, 0);
 
-    for (let i = 0; i < count; i++) {
-        let t = (i / count) * Math.PI * 2;
-        let hx = 16 * Math.pow(Math.sin(t), 3);
-        let hy = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+    // Halo luminoso dorado detrás de la rosa solitaria
+    let glowCanvas = document.createElement('canvas');
+    glowCanvas.width = 256; glowCanvas.height = 256;
+    let glowCtx = glowCanvas.getContext('2d');
+    let glowGrad = glowCtx.createRadialGradient(128, 128, 0, 128, 128, 128);
+    glowGrad.addColorStop(0, 'rgba(255, 225, 60, 0.7)');
+    glowGrad.addColorStop(0.35, 'rgba(255, 190, 0, 0.3)');
+    glowGrad.addColorStop(0.7, 'rgba(255, 160, 0, 0.08)');
+    glowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    glowCtx.fillStyle = glowGrad; glowCtx.fillRect(0, 0, 256, 256);
 
-        let scale = 0.65; // Un punto intermedio para que no sea tan gigante
-        let spread = 2.5; // Mantenemos el grosor
-        let px = hx * scale + (Math.random() - 0.5) * spread;
-        let py = hy * scale + (Math.random() - 0.5) * spread + 10; // Ajustado al nuevo tamaño
-        let pz = (Math.random() - 0.5) * spread;
-
-        pos[i * 3] = px; pos[i * 3 + 1] = py; pos[i * 3 + 2] = pz;
-        heartBasePositions.push({ x: px, y: py, z: pz });
-    }
-
-    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-
-    let canvas = document.createElement('canvas');
-    canvas.width = 32; canvas.height = 32;
-    let ctx = canvas.getContext('2d');
-    let grad = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
-    grad.addColorStop(0, 'rgba(255,215,0,1)');
-    grad.addColorStop(1, 'rgba(255,215,0,0)');
-    ctx.fillStyle = grad; ctx.fillRect(0, 0, 32, 32);
-    let tex = new THREE.CanvasTexture(canvas);
-
-    let mat = new THREE.PointsMaterial({
-        size: 0.8, // Puntos más pequeños
-        color: 0xFFD700, map: tex,
-        transparent: true, blending: THREE.AdditiveBlending, depthWrite: false
+    let glowTex = new THREE.CanvasTexture(glowCanvas);
+    let glowMat = new THREE.MeshBasicMaterial({
+        map: glowTex, transparent: true, blending: THREE.AdditiveBlending,
+        depthWrite: false, side: THREE.DoubleSide
     });
-    
-    heartParticles = new THREE.Points(geo, mat);
-    heartParticles.position.y = 4.5; // <-- Elevamos el corazón para separarlo de la galaxia
-    scene.add(heartParticles);
+    let glowMesh = new THREE.Mesh(new THREE.PlaneGeometry(16, 16), glowMat);
+    glowMesh.position.z = -0.15;
+    group.add(glowMesh);
 
-    // Texto central del corazón como Sprite 3D (Alta resolución)
+    // Malla principal de la Rosa Solitaria (usando la textura single.jpg)
+    let roseMat = new THREE.MeshBasicMaterial({
+        map: loadedTextures[1],
+        transparent: true,
+        side: THREE.DoubleSide,
+        alphaTest: 0.05,
+        depthWrite: false
+    });
+    let roseMesh = new THREE.Mesh(new THREE.PlaneGeometry(10, 10), roseMat);
+    group.add(roseMesh);
+
+    // Luz cálida centrada en la rosa
+    let roseLight = new THREE.PointLight(0xFFD700, 3.0, 50);
+    roseLight.position.set(0, 0, 1.5);
+    group.add(roseLight);
+
+    // Polvo de estrellas doradas orbitando la rosa
+    let pCount = isMobile ? 120 : 260;
+    let pGeo = new THREE.BufferGeometry();
+    let pPos = new Float32Array(pCount * 3);
+    for (let i = 0; i < pCount; i++) {
+        let ang = Math.random() * Math.PI * 2;
+        let dist = 4.2 + Math.random() * 4.2;
+        pPos[i * 3] = Math.cos(ang) * dist;
+        pPos[i * 3 + 1] = (Math.random() - 0.5) * 6;
+        pPos[i * 3 + 2] = Math.sin(ang) * dist;
+    }
+    pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+    let pMat = new THREE.PointsMaterial({
+        size: 0.7,
+        color: 0xFFF2A0,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+    });
+    let roseParticles = new THREE.Points(pGeo, pMat);
+    group.add(roseParticles);
+
+    // Texto 3D flotante: "Amistad 🌻"
     let canvasText = document.createElement('canvas');
     canvasText.width = 1024;
     canvasText.height = 256;
     let ctxText = canvasText.getContext('2d');
     ctxText.fillStyle = "rgba(0,0,0,0)";
     ctxText.fillRect(0, 0, 1024, 256);
-    ctxText.font = "bold 120px 'Dancing Script', Arial, sans-serif";
+    ctxText.font = "bold 130px 'Dancing Script', Arial, sans-serif";
     ctxText.textAlign = "center";
     ctxText.textBaseline = "middle";
     ctxText.fillStyle = "#FFFFFF";
     ctxText.shadowColor = "#FFD700";
-    ctxText.shadowBlur = 20;
-    ctxText.fillText("Te quiero ❤️", 512, 128);
-    
+    ctxText.shadowBlur = 24;
+    ctxText.fillText("Amistad 🌻", 512, 128);
+
     let texText = new THREE.CanvasTexture(canvasText);
     texText.needsUpdate = true;
-    let matText = new THREE.SpriteMaterial({ 
-        map: texText, transparent: true, depthWrite: false 
+    let matText = new THREE.SpriteMaterial({
+        map: texText, transparent: true, depthWrite: false
     });
-    let heartTextSprite = new THREE.Sprite(matText);
-    heartTextSprite.scale.set(24, 6, 1); // Texto un poco más chico para encajar
-    heartTextSprite.position.set(0, 13.5, 0); // Ajustado al centro del nuevo corazón
-    
-    window.heartTextSprite = heartTextSprite;
-    scene.add(heartTextSprite);
+    let textSprite = new THREE.Sprite(matText);
+    textSprite.scale.set(16, 4, 1);
+    textSprite.position.set(0, 6.8, 0); // Flotando encima de la rosa
+    group.add(textSprite);
+
+    // Interacción al tocar la rosa solitaria
+    roseMesh.userData = {
+        idx: 999,
+        scale: 10,
+        targetScale: 10
+    };
+    flowerMeshes.push(roseMesh);
+
+    solitaryRoseGroup = group;
+    solitaryRoseMesh = roseMesh;
+    solitaryTextSprite = textSprite;
+    solitaryParticles = roseParticles;
+    scene.add(group);
 }
 
 function createBackgroundFlowers() {
     let count = isMobile ? CONFIG.bgFlowerCountMobile : CONFIG.bgFlowerCount;
-    
-    for(let i=0; i<count; i++) {
+
+    for (let i = 0; i < count; i++) {
         let texIdx = 1; // Usar EXCLUSIVAMENTE 'single.jpg' (flores solas, no ramos)
-        let mat = new THREE.MeshBasicMaterial({ 
-            map: loadedTextures[texIdx], 
-            transparent: true, 
+        let mat = new THREE.MeshBasicMaterial({
+            map: loadedTextures[texIdx],
+            transparent: true,
             side: THREE.DoubleSide,
             alphaTest: 0.05,
             depthWrite: false
         });
-        
+
         // Achicadas en comparación a los ramos, pero lo suficientemente grandes para verse a lo lejos
-        let size = 0.8 + Math.random() * 0.7; 
+        let size = 0.8 + Math.random() * 0.7;
         let geo = new THREE.PlaneGeometry(size, size);
         let mesh = new THREE.Mesh(geo, mat);
-        
+
         // Esparcir estritamente FUERA de la galaxia, pero sin alejarlas tanto que la niebla las borre
         let u = Math.random(), v = Math.random();
         let theta = 2 * Math.PI * u;
         let phi = Math.acos(2 * v - 1);
-        
+
         let r = 45 + Math.random() * 30; // De 45 a 75 de distancia (dejando un margen claro con la galaxia)
         let px = r * Math.sin(phi) * Math.cos(theta);
         let pz = r * Math.sin(phi) * Math.sin(theta);
         let py = r * Math.cos(phi) * 0.8; // Universo levemente achatado
-        
+
         mesh.position.set(px, py, pz);
-        
+
         mesh.userData = {
             idx: -2, // -2 para que NUNCA coincida con hoveredIdx = -1 y evitar falsos crecimientos
             scale: size,
             targetScale: size
         };
-        
+
         flowers.push(mesh); // Solo para que miren a la cámara
         scene.add(mesh);
     }
@@ -579,7 +612,7 @@ function createFlowers() {
 
     for (let i = 0; i < count; i++) {
         // EXCLUSIVAMENTE Ramos (índices 0 y 2), nada de flores solitarias aquí
-        let texIdx = Math.random() > 0.5 ? 0 : 2; 
+        let texIdx = Math.random() > 0.5 ? 0 : 2;
         let mat = new THREE.MeshBasicMaterial({
             map: loadedTextures[texIdx],
             transparent: true,
@@ -589,12 +622,12 @@ function createFlowers() {
         });
 
         // Achicadas un poquito para que estén perfectas
-        let size = 1.5 + Math.random() * 1.5; 
+        let size = 1.5 + Math.random() * 1.5;
         let geo = new THREE.PlaneGeometry(size, size);
         let mesh = new THREE.Mesh(geo, mat);
 
         let hasLabel = true; // Todos los ramos entregan mensaje, así que todos llevan etiqueta
-        
+
         // TODAS las flores (con o sin etiqueta) orbitan dispersas alrededor del corazón
         // y por encima de la galaxia.
         let r = 18 + Math.random() * 17; // Radio más amplio para que estén MUCHO más separadas (18 a 35)
@@ -602,7 +635,7 @@ function createFlowers() {
         let px = r * Math.cos(angle);
         let pz = r * Math.sin(angle);
         let py = 6 + Math.random() * 8; // Altura: desde arriba de la galaxia hasta el corazón
-        
+
         mesh.position.set(px, py, pz);
 
         mesh.userData = {
@@ -619,12 +652,12 @@ function createFlowers() {
             let ctxText = canvasText.getContext('2d');
             ctxText.fillStyle = "rgba(0,0,0,0)";
             ctxText.fillRect(0, 0, 1024, 256);
-            
+
             let textStr = FLOATING_TEXTS[i % FLOATING_TEXTS.length];
             let fontSize = 85;
             ctxText.font = `bold ${fontSize}px 'Dancing Script', Arial, sans-serif`;
             let textWidth = ctxText.measureText(textStr).width;
-            
+
             // Asegurar que el texto y sus sombras/adornos quepan completos sin ningún recorte
             while (textWidth > 860 && fontSize > 40) {
                 fontSize -= 4;
@@ -638,21 +671,21 @@ function createFlowers() {
             ctxText.shadowColor = "#FFD700";
             ctxText.shadowBlur = 15;
             ctxText.fillText(textStr, 512, 128);
-            
+
             let texText = new THREE.CanvasTexture(canvasText);
             texText.needsUpdate = true;
-            let matText = new THREE.SpriteMaterial({ 
-                map: texText, transparent: true, depthWrite: false 
+            let matText = new THREE.SpriteMaterial({
+                map: texText, transparent: true, depthWrite: false
             });
             let textSprite = new THREE.Sprite(matText);
-            
+
             // Tamaño legible con proporción 4:1
             textSprite.scale.set(4.2, 1.05, 1);
-            
+
             // Posición dinámica: siempre por encima del borde superior de la flor
             // La flor mide 'size' de alto, por lo que su borde superior en coords locales es size/2.
-            textSprite.position.set(0, (size / 2) + 0.6, 0); 
-            
+            textSprite.position.set(0, (size / 2) + 0.6, 0);
+
             mesh.add(textSprite);
         }
 
@@ -789,7 +822,15 @@ function onFlowerPointerDown(e) {
 function openCard(idx) {
     isCardOpen = true;
     if (controls) controls.enabled = false; // Pausar rotación mientras la carta está abierta
-    let msg = MESSAGES[idx % MESSAGES.length];
+    let msg;
+    if (idx === 999) {
+        msg = {
+            title: "Amistad sincera 🌻",
+            text: "Una rosa solitaria en medio del universo como detalle especial para celebrar una amistad bonita, alegre y sincera. ¡Gracias por tu gran amistad, Juany!"
+        };
+    } else {
+        msg = MESSAGES[idx % MESSAGES.length];
+    }
     document.getElementById('card-title').textContent = msg.title;
     document.getElementById('card-msg').textContent = msg.text;
     document.getElementById('card-overlay').classList.add('show');
@@ -824,7 +865,7 @@ function animate() {
 
     if (isZoomingIn) {
         // Velocidad aumentada para un viaje de zoom más rápido y dinámico (0.026)
-        camera.position.lerp(cameraTargetPos, 0.026); 
+        camera.position.lerp(cameraTargetPos, 0.026);
         if (camera.position.distanceTo(cameraTargetPos) < 1.5) {
             isZoomingIn = false;
             isZoomingOut = true; // Inicia el alejamiento sutil final
@@ -845,21 +886,20 @@ function animate() {
 
     // La galaxia ahora es estática por petición del usuario (ahorra muchísimo rendimiento)
 
-    // Animate Heart (latido sutil estático)
-    if (heartParticles) {
-        let pos = heartParticles.geometry.attributes.position.array;
-        let pulse = 1 + Math.sin(t * 3) * 0.05;
-        for (let i = 0; i < heartBasePositions.length; i++) {
-            let base = heartBasePositions[i];
-            pos[i * 3] = base.x * pulse;
-            pos[i * 3 + 1] = base.y * pulse;
-            pos[i * 3 + 2] = base.z * pulse;
+    // Animar Rosa Solitaria central y texto "Amistad 🌻"
+    if (solitaryRoseGroup) {
+        solitaryRoseGroup.lookAt(camera.position); // Mira suavemente hacia la cámara
+        let floatY = 9.5 + Math.sin(t * 1.5) * 0.45;
+        solitaryRoseGroup.position.y = floatY;
+
+        if (solitaryParticles) {
+            solitaryParticles.rotation.y = t * 0.25;
+            solitaryParticles.rotation.z = t * 0.12;
         }
-        heartParticles.geometry.attributes.position.needsUpdate = true;
-        
-        // Latido del texto 3D del corazón
-        if (window.heartTextSprite) {
-            window.heartTextSprite.scale.set(24 * pulse, 6 * pulse, 1);
+
+        if (solitaryTextSprite) {
+            let pulse = 1 + Math.sin(t * 2.2) * 0.04;
+            solitaryTextSprite.scale.set(16 * pulse, 4 * pulse, 1);
         }
     }
 
