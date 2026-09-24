@@ -10,8 +10,8 @@ const CONFIG = {
     bgFlowerCountMobile: 80,
     heartParticleCount: 3000, // Más puntos para que el corazón se vea más gordito
     heartParticleCountMobile: 1500,
-    galaxyParticleCount: 40000, 
-    galaxyParticleCountMobile: 15000,
+    galaxyParticleCount: 80000,
+    galaxyParticleCountMobile: 35000,
     starCount: 8000, // Miles de estrellas extra
     starCountMobile: 3000
 };
@@ -44,8 +44,8 @@ let raycaster, pointerNDC;
 let mouseTarget = { x: 0, y: 0 };
 let isZoomingIn = false;
 let isZoomingOut = false;
-let cameraTargetPos = new THREE.Vector3(0, 15, 50);
-let cameraTargetPosOut = new THREE.Vector3(0, 26, 100); // Destino final más alejado de la galaxia
+let cameraTargetPos = new THREE.Vector3(0, 18, 65);
+let cameraTargetPosOut = new THREE.Vector3(0, 32, 125); // Destino final más alejado para encuadrar la galaxia ensanchada
 
 let flowers = [], flowerMeshes = [];
 let heartParticles, heartBasePositions = [];
@@ -108,10 +108,10 @@ function startExperience() {
                 document.getElementById('canvas-wrap').classList.add('show');
                 document.getElementById('btn-music').classList.add('show');
             }, 400);
-            
+
             // Arrancar el motor de zoom más rápido
             setTimeout(() => {
-                isZoomingIn = true; 
+                isZoomingIn = true;
             }, 800);
         });
     } catch (e) {
@@ -200,7 +200,7 @@ function initThreeJS() {
 
     camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 3000);
     // Empezar la cámara desde el espacio profundo, visible como un punto lejano
-    camera.position.set(0, 150, 600);
+    camera.position.set(0, 180, 750);
 
     renderer = new THREE.WebGLRenderer({ antialias: !isMobile, alpha: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -257,8 +257,8 @@ function createLightsAndAurora() {
     canvas.width = 256; canvas.height = 256;
     let ctx = canvas.getContext('2d');
     let grad = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
-    grad.addColorStop(0, 'rgba(255, 220, 0, 0.5)');
-    grad.addColorStop(0.4, 'rgba(200, 150, 0, 0.2)');
+    grad.addColorStop(0, 'rgba(255, 215, 0, 0.15)');
+    grad.addColorStop(0.4, 'rgba(200, 150, 0, 0.05)');
     grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 256, 256);
@@ -285,14 +285,14 @@ function createStars() {
     let colors = new Float32Array(count * 3);
 
     for (let i = 0; i < count; i++) {
-        // Distribuir en una esfera gigante alrededor del escenario (no adentró de la galaxia)
-        let r = 40 + Math.random() * 160; 
+        // Distribuir en una esfera gigante alrededor del escenario (no adentro de la galaxia)
+        let r = 75 + Math.random() * 220;
         let theta = 2 * Math.PI * Math.random();
         let phi = Math.acos(2 * Math.random() - 1);
 
-        pos[i*3] = r * Math.sin(phi) * Math.cos(theta);
-        pos[i*3+1] = r * Math.cos(phi);
-        pos[i*3+2] = r * Math.sin(phi) * Math.sin(theta);
+        pos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+        pos[i * 3 + 1] = r * Math.cos(phi);
+        pos[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
 
         // Mezcla perfecta de amarillo y blanco
         let color = new THREE.Color();
@@ -301,7 +301,7 @@ function createStars() {
         } else {
             color.lerpColors(new THREE.Color(0xFFD700), new THREE.Color(0xFFFFFF), Math.random() * 0.5); // Amarillos claros
         }
-        colors[i*3] = color.r; colors[i*3+1] = color.g; colors[i*3+2] = color.b;
+        colors[i * 3] = color.r; colors[i * 3 + 1] = color.g; colors[i * 3 + 2] = color.b;
     }
 
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
@@ -318,16 +318,16 @@ function createStars() {
     ctx.beginPath(); ctx.arc(8, 8, 8, 0, Math.PI * 2); ctx.fill();
     let tex = new THREE.CanvasTexture(canvas);
 
-    let mat = new THREE.PointsMaterial({ 
-        size: 0.6 + Math.random() * 0.4, 
-        vertexColors: true, 
-        transparent: true, 
+    let mat = new THREE.PointsMaterial({
+        size: 0.6 + Math.random() * 0.4,
+        vertexColors: true,
+        transparent: true,
         opacity: 0.8,
         map: tex,
         depthWrite: false,
         blending: THREE.AdditiveBlending
     });
-    
+
     starParticles = new THREE.Points(geo, mat);
     scene.add(starParticles);
 }
@@ -337,127 +337,156 @@ function createGalaxy() {
     let geo = new THREE.BufferGeometry();
     let pos = new Float32Array(count * 3);
     let colors = new Float32Array(count * 3);
-    
+
     let colorCenter = new THREE.Color(0xFFFFFF); // Blanco puro
     let colorMid = new THREE.Color(0xFFD700);    // Dorado brillante
     let colorEdge = new THREE.Color(0xD9A441);   // Dorado oscuro
-    
-    // 1. VÓRTICE HECHO DE PARTÍCULAS (5 brazos espirales)
-    for(let i=0; i<count; i++) {
-        // Añadimos un radio mínimo de 2.0 para evitar que miles de partículas se amontonen en el punto 0,0 y quemen el centro
-        let r = 2.0 + Math.pow(Math.random(), 1.8) * 33; 
-        
-        let isArm = Math.random() < 0.8; 
-        
-        let branchAngle = (i % 5) * ((Math.PI * 2) / 5); 
-        let spinAngle = r * 0.16; 
-        
-        let rx, rz, randX = 0, randZ = 0;
-        if (isArm) {
-            // Brazos AÚN más anchos en el centro (8.5) 
-            let scatter = Math.max(0.5, 8.5 - (r / 5.0)); 
-            
-            randX = (Math.random() - 0.5) * scatter;
-            randZ = (Math.random() - 0.5) * scatter;
-            // Randomness contenido estrictamente en el grosor del brazo
-            rx = Math.cos(branchAngle + spinAngle) * r + randX;
-            rz = Math.sin(branchAngle + spinAngle) * r + randZ;
-        } else {
-            // Polvo de estrellas esparcido alrededor
-            let angle = Math.random() * Math.PI * 2;
-            rx = Math.cos(angle) * r;
-            rz = Math.sin(angle) * r;
-            
-            // Calculamos el randX/Z artificial para que no falle
-            randX = rx - Math.cos(angle) * r;
-            randZ = rz - Math.sin(angle) * r;
-            branchAngle = angle;
-            spinAngle = 0;
-        }
-        
-        // Muy plano en Y, formando el disco
-        let ry = (Math.random() - 0.5) * Math.max(0.1, 1.0 - r * 0.03); 
 
-        pos[i*3] = rx;
-        pos[i*3+1] = ry; 
-        pos[i*3+2] = rz;
-        
-        let actualDist = Math.sqrt(rx*rx + ry*ry + rz*rz);
+    // 1. GALAXIA ORGÁNICA: REMOLINO CENTRAL NÍTIDO + BRAZOS DIFUSOS SIN LÍNEAS + DISCO GALÁCTICO
+    let maxGalaxyRadius = 68; // Galaxia amplia y completa
+    let armCount = 5; // 5 brazos espirales bien definidos en el centro
+
+    for (let i = 0; i < count; i++) {
+        let isArm = Math.random() < 0.72; // 72% en los brazos espirales, 28% en el disco galáctico
+        let rx, ry, rz;
+        let armBrightness = 1.0;
         let mixedColor = new THREE.Color();
-        
-        // Muchísimos más puntos blancos concentrados específicamente en las líneas (brazos) de la galaxia
-        let whiteChance = isArm ? 0.50 : 0.20; 
-        if (Math.random() < whiteChance) {
-            mixedColor.setHex(0xFFFFFF); // Blanco absoluto
-        } else {
-            if (actualDist < 5.0) {
-                // Hacemos el centro un dorado mucho más profundo para contrarrestar la suma de luces
-                mixedColor.lerpColors(new THREE.Color(0xB8860B), colorMid, 0.5); 
-            } else if (actualDist < 15) {
-                mixedColor.lerpColors(colorMid, colorEdge, (actualDist - 5.0) / 10.0);
+        let actualDist = 0;
+
+        if (isArm) {
+            let progress = Math.pow(Math.random(), 1.15);
+            let r = 1.2 + progress * maxGalaxyRadius;
+            let normR = Math.min(1.0, (r - 1.2) / maxGalaxyRadius);
+
+            let armIndex = i % armCount;
+            let branchAngle = armIndex * ((Math.PI * 2) / armCount);
+
+            // Curvatura del remolino
+            let spinAngle = 1.60 * Math.log(r / 1.1) + r * 0.038;
+
+            // Factor de núcleo: 1 en el centro, 0 hacia afuera
+            let centerT = Math.max(0, 1.0 - normR * 2.8);
+
+            // Dispersión angular que ensancha suavemente las líneas para que no sean trazos rígidos
+            let angleSpread = 0.09 * centerT + (1.0 - centerT) * (0.10 + Math.pow(normR, 0.72) * 0.52);
+            let dAngle = ((Math.random() - 0.5) + (Math.random() - 0.5)) * angleSpread;
+
+            // Dispersión radial suave
+            let rSpread = 0.8 * centerT + (1.0 - centerT) * (1.5 + Math.pow(normR, 0.78) * 14.0);
+            let dR = ((Math.random() - 0.5) + (Math.random() - 0.5)) * rSpread;
+
+            // Grosor más suave y ancho en el centro (~2.0 unidades)
+            let centerOffset = ((Math.random() - 0.5) + (Math.random() - 0.5)) * (1.7 * centerT + (1.0 - centerT) * 14.0);
+
+            let theta = branchAngle + spinAngle + dAngle;
+            let effectiveR = Math.max(0.8, r + dR);
+
+            let perpAngle = theta + Math.PI / 2;
+            rx = Math.cos(theta) * effectiveR + Math.cos(perpAngle) * centerOffset;
+            rz = Math.sin(theta) * effectiveR + Math.sin(perpAngle) * centerOffset;
+
+            // Grosor vertical en Y volumétrico
+            ry = (Math.random() - 0.5) * (0.35 + normR * 5.5);
+
+            actualDist = Math.sqrt(rx * rx + ry * ry + rz * rz);
+
+            // DESVANECIMIENTO POCO A POCO DE LA ESPIRAL DEL MEDIO:
+            // Conforme se acerca al núcleo (actualDist < 9.5), el brillo se desvanece suavemente
+            // evitando que se formen líneas duras o ganchos quemados en el medio.
+            let centerFade = Math.min(1.0, Math.pow(actualDist / 9.5, 1.25));
+            let radialFade = Math.max(0.3, 1.0 - Math.pow(normR, 2.4) * 0.55);
+            armBrightness = centerFade * radialFade;
+
+            // En el centro evitamos el quemado blanco; usamos tonos dorados cálidos
+            let whiteChance = actualDist < 8.0 ? 0.04 : (0.16 + normR * 0.20);
+            if (Math.random() < whiteChance) {
+                mixedColor.setHex(0xFFFFFF); // Puntos blancos diamantinos
             } else {
-                mixedColor.lerpColors(colorMid, colorEdge, 1.0); 
+                if (actualDist < 6.0) {
+                    mixedColor.lerpColors(new THREE.Color(0xB8860B), colorMid, actualDist / 6.0);
+                } else if (actualDist < 30.0) {
+                    mixedColor.lerpColors(colorMid, colorEdge, (actualDist - 6.0) / 24.0);
+                } else {
+                    mixedColor.lerpColors(colorMid, colorEdge, Math.min(1.0, 0.3 + (actualDist - 30.0) / 40.0));
+                }
+            }
+        } else {
+            // DISCO GALÁCTICO INTERMEDIO Y VELO CÓSMICO (Da cuerpo y cohesión de verdadera galaxia)
+            let discProgress = Math.pow(Math.random(), 1.25);
+            let discR = 2.0 + discProgress * maxGalaxyRadius;
+            let discNormR = discR / maxGalaxyRadius;
+
+            let discAngle = Math.random() * Math.PI * 2;
+            rx = Math.cos(discAngle) * discR;
+            rz = Math.sin(discAngle) * discR;
+            ry = (Math.random() - 0.5) * (0.6 + discNormR * 6.0);
+
+            actualDist = Math.sqrt(rx * rx + ry * ry + rz * rz);
+            let fade = Math.max(0.18, 1.0 - Math.pow(discNormR, 1.8) * 0.65);
+            armBrightness = fade * 0.62;
+
+            if (Math.random() < 0.12) {
+                mixedColor.setHex(0xFFFFFF);
+            } else {
+                mixedColor.lerpColors(new THREE.Color(0xB8860B), colorMid, Math.random() * 0.85);
             }
         }
-        
-        colors[i*3] = mixedColor.r; colors[i*3+1] = mixedColor.g; colors[i*3+2] = mixedColor.b;
-        
-        galaxyData.push({
-            angle: branchAngle + spinAngle,
-            radius: r,
-            speed: 0.005 + (0.01 / Math.max(1, r * 0.2)),
-            rx: randX,
-            rz: randZ,
-            ry: ry
-        });
+
+        pos[i * 3] = rx;
+        pos[i * 3 + 1] = ry;
+        pos[i * 3 + 2] = rz;
+
+        colors[i * 3] = mixedColor.r * armBrightness;
+        colors[i * 3 + 1] = mixedColor.g * armBrightness;
+        colors[i * 3 + 2] = mixedColor.b * armBrightness;
     }
-    
+
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    
+
     let canvasParticle = document.createElement('canvas');
     canvasParticle.width = 16; canvasParticle.height = 16;
     let ctxP = canvasParticle.getContext('2d');
-    let gradP = ctxP.createRadialGradient(8,8,0,8,8,8);
+    let gradP = ctxP.createRadialGradient(8, 8, 0, 8, 8, 8);
     // Usar blanco puro para la textura, el color dorado lo dará el vertexColor
     gradP.addColorStop(0, 'rgba(255,255,255,1)');
     gradP.addColorStop(0.2, 'rgba(255,255,255,0.8)');
     gradP.addColorStop(1, 'rgba(0,0,0,0)');
-    ctxP.fillStyle = gradP; ctxP.fillRect(0,0,16,16);
+    ctxP.fillStyle = gradP; ctxP.fillRect(0, 0, 16, 16);
     let texP = new THREE.CanvasTexture(canvasParticle);
 
     let matParticle = new THREE.PointsMaterial({
-        size: 0.9, // Puntos más grandes
+        size: 1.15, // Puntos más grandes y luminosos para rellenar los brazos gruesos
         vertexColors: true, blending: THREE.AdditiveBlending,
         transparent: true, depthWrite: false, map: texP
     });
-    
+
     galaxyParticles = new THREE.Points(geo, matParticle);
     scene.add(galaxyParticles);
 
-    // --- AURORAS AMARILLAS EN LA GALAXIA ---
+    // --- AURORAS AMARILLAS EN LA GALAXIA ENSANCHADA ---
     let auroraCanvas = document.createElement('canvas');
-    auroraCanvas.width = 512; auroraCanvas.height = 512; 
+    auroraCanvas.width = 512; auroraCanvas.height = 512;
     let auroraCtx = auroraCanvas.getContext('2d');
-    let auroraGrad = auroraCtx.createRadialGradient(256,256,0, 256,256,256);
-    auroraGrad.addColorStop(0, 'rgba(255, 215, 0, 0.4)'); // Aurora amarilla tenue
-    auroraGrad.addColorStop(0.5, 'rgba(255, 215, 0, 0.1)'); 
+    let auroraGrad = auroraCtx.createRadialGradient(256, 256, 0, 256, 256, 256);
+    auroraGrad.addColorStop(0, 'rgba(255, 215, 0, 0.20)'); // Suavizado para mantener la nitidez del remolino
+    auroraGrad.addColorStop(0.5, 'rgba(255, 215, 0, 0.05)');
     auroraGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    auroraCtx.fillStyle = auroraGrad; auroraCtx.fillRect(0,0,512,512);
-    
+    auroraCtx.fillStyle = auroraGrad; auroraCtx.fillRect(0, 0, 512, 512);
+
     let auroraTex = new THREE.CanvasTexture(auroraCanvas);
-    let auroraMat = new THREE.MeshBasicMaterial({ 
-        map: auroraTex, transparent: true, blending: THREE.AdditiveBlending, 
-        depthWrite: false, side: THREE.DoubleSide 
+    let auroraMat = new THREE.MeshBasicMaterial({
+        map: auroraTex, transparent: true, blending: THREE.AdditiveBlending,
+        depthWrite: false, side: THREE.DoubleSide
     });
-    
-    // Distribuir 4 auroras masivas por la galaxia
-    for(let a=0; a<4; a++) {
-        let auroraMesh = new THREE.Mesh(new THREE.PlaneGeometry(50, 50), auroraMat);
+
+    // Distribuir 4 auroras masivas por la galaxia ensanchada
+    for (let a = 0; a < 4; a++) {
+        let auroraMesh = new THREE.Mesh(new THREE.PlaneGeometry(85, 85), auroraMat);
         auroraMesh.rotation.x = -Math.PI / 2;
-        let angle = (a / 4) * Math.PI * 2 + Math.PI/4;
-        let dist = 15;
-        auroraMesh.position.set(Math.cos(angle)*dist, -1, Math.sin(angle)*dist);
+        let angle = (a / 4) * Math.PI * 2 + Math.PI / 4;
+        let dist = 24;
+        auroraMesh.position.set(Math.cos(angle) * dist, -1, Math.sin(angle) * dist);
         scene.add(auroraMesh);
     }
 
@@ -500,7 +529,7 @@ function createHeart() {
         color: 0xFFD700, map: tex,
         transparent: true, blending: THREE.AdditiveBlending, depthWrite: false
     });
-    
+
     heartParticles = new THREE.Points(geo, mat);
     heartParticles.position.y = 4.5; // <-- Elevamos el corazón para separarlo de la galaxia
     scene.add(heartParticles);
@@ -519,56 +548,56 @@ function createHeart() {
     ctxText.shadowColor = "#FFD700";
     ctxText.shadowBlur = 20;
     ctxText.fillText("Te quiero ❤️", 512, 128);
-    
+
     let texText = new THREE.CanvasTexture(canvasText);
     texText.needsUpdate = true;
-    let matText = new THREE.SpriteMaterial({ 
-        map: texText, transparent: true, depthWrite: false 
+    let matText = new THREE.SpriteMaterial({
+        map: texText, transparent: true, depthWrite: false
     });
     let heartTextSprite = new THREE.Sprite(matText);
     heartTextSprite.scale.set(24, 6, 1); // Texto un poco más chico para encajar
     heartTextSprite.position.set(0, 13.5, 0); // Ajustado al centro del nuevo corazón
-    
+
     window.heartTextSprite = heartTextSprite;
     scene.add(heartTextSprite);
 }
 
 function createBackgroundFlowers() {
     let count = isMobile ? CONFIG.bgFlowerCountMobile : CONFIG.bgFlowerCount;
-    
-    for(let i=0; i<count; i++) {
+
+    for (let i = 0; i < count; i++) {
         let texIdx = 1; // Usar EXCLUSIVAMENTE 'single.jpg' (flores solas, no ramos)
-        let mat = new THREE.MeshBasicMaterial({ 
-            map: loadedTextures[texIdx], 
-            transparent: true, 
+        let mat = new THREE.MeshBasicMaterial({
+            map: loadedTextures[texIdx],
+            transparent: true,
             side: THREE.DoubleSide,
             alphaTest: 0.05,
             depthWrite: false
         });
-        
+
         // Achicadas en comparación a los ramos, pero lo suficientemente grandes para verse a lo lejos
-        let size = 0.8 + Math.random() * 0.7; 
+        let size = 0.8 + Math.random() * 0.7;
         let geo = new THREE.PlaneGeometry(size, size);
         let mesh = new THREE.Mesh(geo, mat);
-        
-        // Esparcir estritamente FUERA de la galaxia, pero sin alejarlas tanto que la niebla las borre
+
+        // Esparcir estrictamente FUERA de la galaxia ensanchada, pero sin alejarlas tanto que la niebla las borre
         let u = Math.random(), v = Math.random();
         let theta = 2 * Math.PI * u;
         let phi = Math.acos(2 * v - 1);
-        
-        let r = 45 + Math.random() * 30; // De 45 a 75 de distancia (dejando un margen claro con la galaxia)
+
+        let r = 70 + Math.random() * 35; // De 70 a 105 de distancia (dejando un margen claro con la galaxia ensanchada)
         let px = r * Math.sin(phi) * Math.cos(theta);
         let pz = r * Math.sin(phi) * Math.sin(theta);
         let py = r * Math.cos(phi) * 0.8; // Universo levemente achatado
-        
+
         mesh.position.set(px, py, pz);
-        
+
         mesh.userData = {
             idx: -2, // -2 para que NUNCA coincida con hoveredIdx = -1 y evitar falsos crecimientos
             scale: size,
             targetScale: size
         };
-        
+
         flowers.push(mesh); // Solo para que miren a la cámara
         scene.add(mesh);
     }
@@ -579,7 +608,7 @@ function createFlowers() {
 
     for (let i = 0; i < count; i++) {
         // EXCLUSIVAMENTE Ramos (índices 0 y 2), nada de flores solitarias aquí
-        let texIdx = Math.random() > 0.5 ? 0 : 2; 
+        let texIdx = Math.random() > 0.5 ? 0 : 2;
         let mat = new THREE.MeshBasicMaterial({
             map: loadedTextures[texIdx],
             transparent: true,
@@ -589,12 +618,12 @@ function createFlowers() {
         });
 
         // Achicadas un poquito para que estén perfectas
-        let size = 1.5 + Math.random() * 1.5; 
+        let size = 1.5 + Math.random() * 1.5;
         let geo = new THREE.PlaneGeometry(size, size);
         let mesh = new THREE.Mesh(geo, mat);
 
         let hasLabel = true; // Todos los ramos entregan mensaje, así que todos llevan etiqueta
-        
+
         // TODAS las flores (con o sin etiqueta) orbitan dispersas alrededor del corazón
         // y por encima de la galaxia.
         let r = 18 + Math.random() * 17; // Radio más amplio para que estén MUCHO más separadas (18 a 35)
@@ -602,7 +631,7 @@ function createFlowers() {
         let px = r * Math.cos(angle);
         let pz = r * Math.sin(angle);
         let py = 6 + Math.random() * 8; // Altura: desde arriba de la galaxia hasta el corazón
-        
+
         mesh.position.set(px, py, pz);
 
         mesh.userData = {
@@ -619,12 +648,12 @@ function createFlowers() {
             let ctxText = canvasText.getContext('2d');
             ctxText.fillStyle = "rgba(0,0,0,0)";
             ctxText.fillRect(0, 0, 1024, 256);
-            
+
             let textStr = FLOATING_TEXTS[i % FLOATING_TEXTS.length];
             let fontSize = 85;
             ctxText.font = `bold ${fontSize}px 'Dancing Script', Arial, sans-serif`;
             let textWidth = ctxText.measureText(textStr).width;
-            
+
             // Asegurar que el texto y sus sombras/adornos quepan completos sin ningún recorte
             while (textWidth > 860 && fontSize > 40) {
                 fontSize -= 4;
@@ -638,21 +667,21 @@ function createFlowers() {
             ctxText.shadowColor = "#FFD700";
             ctxText.shadowBlur = 15;
             ctxText.fillText(textStr, 512, 128);
-            
+
             let texText = new THREE.CanvasTexture(canvasText);
             texText.needsUpdate = true;
-            let matText = new THREE.SpriteMaterial({ 
-                map: texText, transparent: true, depthWrite: false 
+            let matText = new THREE.SpriteMaterial({
+                map: texText, transparent: true, depthWrite: false
             });
             let textSprite = new THREE.Sprite(matText);
-            
+
             // Tamaño legible con proporción 4:1
             textSprite.scale.set(4.2, 1.05, 1);
-            
+
             // Posición dinámica: siempre por encima del borde superior de la flor
             // La flor mide 'size' de alto, por lo que su borde superior en coords locales es size/2.
-            textSprite.position.set(0, (size / 2) + 0.6, 0); 
-            
+            textSprite.position.set(0, (size / 2) + 0.6, 0);
+
             mesh.add(textSprite);
         }
 
@@ -824,7 +853,7 @@ function animate() {
 
     if (isZoomingIn) {
         // Velocidad aumentada para un viaje de zoom más rápido y dinámico (0.026)
-        camera.position.lerp(cameraTargetPos, 0.026); 
+        camera.position.lerp(cameraTargetPos, 0.026);
         if (camera.position.distanceTo(cameraTargetPos) < 1.5) {
             isZoomingIn = false;
             isZoomingOut = true; // Inicia el alejamiento sutil final
@@ -856,7 +885,7 @@ function animate() {
             pos[i * 3 + 2] = base.z * pulse;
         }
         heartParticles.geometry.attributes.position.needsUpdate = true;
-        
+
         // Latido del texto 3D del corazón
         if (window.heartTextSprite) {
             window.heartTextSprite.scale.set(24 * pulse, 6 * pulse, 1);
